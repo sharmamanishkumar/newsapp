@@ -1,0 +1,8 @@
+{
+    "env": {
+        "MONGO_ATLAS_PW": "manish9090",
+        "JWT_KEY": "secret",
+        "DB": "myuser",
+        "MOGNO_CLUSTER_APP": "mongodb+srv://manish:manish9090@cluster0.lvk1u.mongodb.net/myuser?retryWrites=true&w=majority"
+    }
+}
