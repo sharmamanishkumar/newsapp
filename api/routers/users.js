@@ -1,14 +1,14 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
-const bodyparser = require("body-parser");
+const jwt = require("jsonwebtoken");
 const News = require("../moduls/user");
 const router = express.Router();
 
 router.post("/singup", (req, res, next) => {
   News.find({
-      email: req.body.email
-    })
+    email: req.body.email,
+  })
     .exec()
     .then((news) => {
       if (news.length >= 1) {
@@ -27,9 +27,10 @@ router.post("/singup", (req, res, next) => {
               email: req.body.email,
               password: hash,
               fullName: req.body.fullName,
-              date: req.body.date
+              date: req.body.date,
             });
-            news.save()
+            news
+              .save()
               .then((result) => {
                 res.status(201).json({
                   message: "User Register",
@@ -37,8 +38,8 @@ router.post("/singup", (req, res, next) => {
                     _id: result._id,
                     email: result.email,
                     fullname: result.fullName,
-                    date: result.date
-                  }
+                    date: result.date,
+                  },
                 });
                 console.log(result);
               })
@@ -64,11 +65,11 @@ router.get("/", (req, res, next) => {
         count: result.length,
         message: "All Users",
         users: result.map((res) => {
-          console.log(res, '098765456789');
+          console.log(res, "098765456789");
           return {
             _id: res._id,
             email: res.email,
-           fullname: res.fullName,
+            fullname: res.fullName,
             date: res.date,
             requsted: {
               type: "GET",
@@ -89,8 +90,8 @@ router.get("/", (req, res, next) => {
 
 router.delete("/:userId", (req, res, next) => {
   News.remove({
-      _id: req.params.userId
-    })
+    _id: req.params.userId,
+  })
     .exec()
     .then((result) => {
       console.log(result);
@@ -99,27 +100,30 @@ router.delete("/:userId", (req, res, next) => {
         requested: {
           type: "GET",
           url: "http://localhost:5000/user",
-        }
+        },
       });
     })
     .catch((err) => {
       res.status(500).json({
-        error: err
+        error: err,
       });
     });
 });
 
 router.patch("/:userId", (req, res, next) => {
   const id = req.params.userId;
-  News.findOneAndUpdate({
-      _id: id
-    }, {
+  News.findOneAndUpdate(
+    {
+      _id: id,
+    },
+    {
       $set: {
         email: req.body.email,
         fullname: req.body.fullName,
-        date: req.body.date
-      }
-    })
+        date: req.body.date,
+      },
+    }
+  )
     .exec()
     .then((results) => {
       console.log(results);
@@ -132,4 +136,51 @@ router.patch("/:userId", (req, res, next) => {
       });
     });
 });
-module.exports = router
+
+router.post("/login", (req, res, next) => {
+  News.find({
+    email: req.body.email,
+  })
+    .exec()
+    .then((user) => {
+      if (user.length < 1) {
+        return res.status(401).json({
+          message: "Auth failed",
+        });
+      }
+      bcrypt.compare(req.body.password, user[0].password, (err, result) => {
+        if (err) {
+          return res.status(401).json({
+            message: "Auth failed",
+          });
+        }
+        if (result) {
+          const token = jwt.sign(
+            {
+              email: user[0].email,
+              userId: user[0]._id,
+            },
+            process.env.JWT_KEY,
+            {
+              expiresIn: "1h",
+            }
+          );
+          return res.status(200).json({
+            message: "Auth successful",
+            token: token,
+          });
+        }
+        res.status(401).json({
+          message: "Auth failed",
+        });
+      });
+    })
+    .catch((error) => {
+      console.log(error);
+      res.status(500).json({
+        error: error,
+      });
+    });
+});
+
+module.exports = router;
